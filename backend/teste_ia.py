@@ -1,7 +1,7 @@
 from deepface import DeepFace
 
 foto_ref = r"C:\Users\aliss\OneDrive\Documentos\ponto_facial_app\backend\foto_referencia.jpg"
-foto_teste = r"C:\Users\aliss\OneDrive\Documentos\ponto_facial_app\backend\foto_teste.jpg"
+foto_teste = r"C:\Users\aliss\OneDrive\Documentos\ponto_facial_app\backend\foto_estranho.jpg"
 
 print("--- INICIANDO COMPARAÇÃO FACIAL ---")
 
