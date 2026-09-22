@@ -3,6 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from deepface import DeepFace
 import shutil
 import os
+from dotenv import load_dotenv
+from supabase import create_client, Client
+
+
+# Carrega as senhas do arquivo .env
+load_dotenv()
+
+# Conecta ao banco de dados do Supabase
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
 
 app = FastAPI(title="API Ponto Facial")
 
@@ -47,9 +58,19 @@ async def bater_ponto(foto: UploadFile = File(...)):
         
         # 6. Retorna a resposta para o frontend
         if resultado["verified"]:
+            
+            # ---LÓGICA DO SUPABASE AQUI ---
+            dados_ponto = {
+                "funcionario_id": "b2b6d9bd-e7c7-4769-b5bd-5e510fa94249", # Ex: "123e4567-e89b-12d3-a456-426614174000"
+                "tipo_batida": "entrada"
+            }
+            # Insere na tabela 'registros_ponto'
+            supabase.table("registros_ponto").insert(dados_ponto).execute()
+            # ------------------------------------
+
             return {
                 "sucesso": True, 
-                "mensagem": "Ponto registrado com sucesso!",
+                "mensagem": "Ponto registrado e salvo no banco com sucesso!",
                 "distancia": round(resultado["distance"], 4)
             }
         else:
@@ -64,3 +85,4 @@ async def bater_ponto(foto: UploadFile = File(...)):
         if os.path.exists(caminho_temporario):
             os.remove(caminho_temporario)
         return {"sucesso": False, "erro": str(e)}
+    
