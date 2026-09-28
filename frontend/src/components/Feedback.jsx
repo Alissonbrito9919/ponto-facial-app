@@ -1,4 +1,6 @@
 import React from 'react';
+import logo from '../assets/logo.jpeg';
+
 
 export default function Feedback({ avancarTela }) {
   // Captura a hora local para mostrar no comprovativo visual
@@ -7,6 +9,7 @@ export default function Feedback({ avancarTela }) {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <img src={logo} alt="Logótipo Puncto" style={styles.logo} />
         <div style={styles.icone}>✅</div>
         <h2 style={styles.titulo}>Ponto Aprovado!</h2>
         
@@ -37,6 +40,11 @@ const styles = {
     padding: '20px',
     fontFamily: 'sans-serif',
     boxSizing: 'border-box'
+  },
+  logo: {
+    height: '60px', 
+    marginBottom: '16px',
+    objectFit: 'contain'
   },
   card: {
     backgroundColor: '#FFFFFF',

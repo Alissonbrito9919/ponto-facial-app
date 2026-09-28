@@ -1,96 +1,73 @@
 import React, { useState } from 'react';
+import logo from '../assets/logo.jpeg';
 
-export default function Identificacao({ avancarTela }) {
-  const [matricula, setMatricula] = useState('');
+export default function Identificacao({ avancarTela, guardarDadosPonto }) {
+  const [cpf, setCpf] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (matricula.trim() !== '') {
-      // Aqui vamos passar o ID para a próxima tela no futuro
-      avancarTela('captura');
+  const lidarComBatida = (tipo) => {
+    if (cpf.length < 11) {
+      alert("Por favor, introduza um CPF válido (11 dígitos).");
+      return;
     }
+    // Guarda o CPF e o Tipo (Entrada, Saída...) na memória principal do App
+    guardarDadosPonto({ cpf, tipo });
+    avancarTela('captura');
   };
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Registro de Ponto</h1>
-        <p style={styles.subtitle}>Acesso Seguro por Biometria</p>
-      </div>
-
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <label style={styles.label}>Digite sua Matrícula ou ID</label>
+      <img src={logo} alt="Logótipo Puncto" style={styles.logo} />
+      <h2 style={styles.title}>Registo de Ponto</h2>
+      
+      <div style={styles.form}>
+        <label style={styles.label}>O seu CPF (apenas números)</label>
         <input 
-          type="text" 
-          value={matricula}
-          onChange={(e) => setMatricula(e.target.value)}
-          placeholder="Ex: 123456" 
+          type="number" 
+          value={cpf}
+          onChange={(e) => setCpf(e.target.value)}
+          placeholder="Ex: 12345678900" 
           style={styles.input}
-          required
         />
-        <button type="submit" style={styles.button}>
-          Avançar
+
+        <label style={styles.label}>Selecione o tipo de registo:</label>
+        <div style={styles.grid}>
+          <button style={styles.btnGrid} onClick={() => lidarComBatida('Entrada')}>☀️ Entrada</button>
+          <button style={styles.btnGrid} onClick={() => lidarComBatida('Almoço')}>🍽️ Almoço</button>
+          <button style={styles.btnGrid} onClick={() => lidarComBatida('Retorno')}>💼 Retorno</button>
+          <button style={styles.btnGrid} onClick={() => lidarComBatida('Saída')}>🌙 Saída</button>
+        </div>
+        
+        <button style={styles.btnVoltar} onClick={() => avancarTela('home')}>
+          Voltar ao Início
         </button>
-      </form>
+      </div>
     </div>
   );
 }
 
-// Estilos direto no componente para agilizar o MVP
 const styles = {
   container: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    backgroundColor: '#F8FAFC', // Fundo off-white
-    padding: '20px',
-    fontFamily: 'sans-serif'
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    minHeight: '100vh', backgroundColor: '#F8FAFC', padding: '40px 20px', fontFamily: 'sans-serif'
   },
-  header: {
-    textAlign: 'center',
-    marginBottom: '40px'
-  },
-  title: {
-    color: '#2563EB', // Azul primário
-    fontSize: '28px',
-    margin: '0 0 8px 0'
-  },
-  subtitle: {
-    color: '#64748B',
-    fontSize: '16px',
-    margin: 0
-  },
-  form: {
-    width: '100%',
-    maxWidth: '400px',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  label: {
-    color: '#1E293B',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    marginBottom: '8px'
-  },
+  logo: { height: '50px', marginBottom: '16px', objectFit: 'contain' },
+  title: { color: '#2563EB', fontSize: '24px', marginBottom: '32px' },
+  form: { width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column' },
+  label: { color: '#1E293B', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' },
   input: {
-    height: '56px',
-    borderRadius: '8px',
-    border: '1px solid #E2E8F0',
-    padding: '0 16px',
-    fontSize: '16px',
-    marginBottom: '24px',
-    outline: 'none'
+    height: '56px', borderRadius: '8px', border: '1px solid #E2E8F0',
+    padding: '0 16px', fontSize: '16px', marginBottom: '24px', outline: 'none'
   },
-  button: {
-    height: '56px',
-    backgroundColor: '#2563EB',
-    color: '#FFFFFF',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '18px',
-    fontWeight: 'bold',
-    cursor: 'pointer'
+  grid: {
+    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '32px'
+  },
+  btnGrid: {
+    height: '60px', backgroundColor: '#FFFFFF', color: '#1E293B', border: '1px solid #CBD5E1',
+    borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+  },
+  btnVoltar: {
+    background: 'none', border: 'none', color: '#64748B', fontSize: '16px',
+    fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline'
   }
 };
