@@ -4,3 +4,4 @@ deepface
 python-dotenv
 supabase
 pydantic
+tf-keras
