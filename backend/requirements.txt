@@ -4,4 +4,4 @@ deepface
 python-dotenv
 supabase
 pydantic
-tf-keras
+tensorflow==2.15.0
