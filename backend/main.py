@@ -9,51 +9,59 @@ from pydantic import BaseModel
 import base64
 from typing import Optional
 import urllib.request
-import numpy as np
-import cv2
+import tempfile # Biblioteca nativa adicionada para lidar com arquivos no Render
 
-# Carrega as senhas do arquivo .env
+# Carrega as senhas do arquivo .env (funciona no ambiente local)
 load_dotenv()
 
+# Puxa as credenciais
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
+
+# Trava a aplicação com uma mensagem clara se as variáveis não existirem no Render
+if not url or not key:
+    raise ValueError("⚠️️ ERRO CRÍTICO: SUPABASE_URL ou SUPABASE_KEY não foram encontradas. Vá na aba 'Environment' do Render e configure as chaves.")
+
 # Conecta ao banco de dados do Supabase
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 app = FastAPI(title="API Ponto Facial")
 
-# 2. Configuração de permissões de rede
+# Configuração de permissões de rede
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permite o acesso de qualquer dispositivo no Wi-Fi
+    allow_origins=["*"], 
     allow_credentials=True,
-    allow_methods=["*"], # Permite todos os métodos (GET, POST, etc.)
-    allow_headers=["*"], # Permite todos os cabeçalhos
+    allow_methods=["*"], 
+    allow_headers=["*"], 
 )
 
 class CadastroFuncionario(BaseModel):
     nome: str
     cpf: str
-    data_nascimento: str # Formato AAAA-MM-DD
-    foto_base64: str # A imagem capturada pela câmera
+    data_nascimento: str 
+    foto_base64: str 
 
 class PontoFuncionario(BaseModel):
     cpf: str
     foto_base64: str
-    tipo_batida: str # Ex: 'Entrada', 'Almoço', 'Retorno', 'Saída'
+    tipo_batida: str 
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
-# Rota de teste
 @app.get("/")
 def status_api():
     return {"status": "online", "mensagem": "API do Sistema de Ponto rodando com sucesso!"}
 
-# Nova Rota: Bater Ponto
 @app.post("/bater-ponto")
 async def registrar_ponto(dados: PontoFuncionario):
+    # Usa a pasta temporária correta do sistema (evita problemas de permissão na nuvem)
+    dir_temp = tempfile.gettempdir()
+    caminho_captura = os.path.join(dir_temp, f"temp_captura_{dados.cpf}.jpg")
+    caminho_referencia = os.path.join(dir_temp, f"temp_referencia_{dados.cpf}.jpg")
+    
     try:
-        # 1. Procurar o funcionário pelo CPF na base de dados
+        # 1. Procurar o funcionário pelo CPF
         resposta_func = supabase.table("funcionarios").select("*").eq("cpf", dados.cpf).execute()
         
         if not resposta_func.data:
@@ -61,32 +69,32 @@ async def registrar_ponto(dados: PontoFuncionario):
             
         funcionario = resposta_func.data[0]
         
-        # 2. Preparar as fotografias para o DeepFace (Ambas em formato OpenCV)
-        
-        # A. Converter a foto capturada (Base64) para formato cv2
+        # 2. Preparar as fotografias
         base64_limpo = dados.foto_base64.split(",")[1] if "," in dados.foto_base64 else dados.foto_base64
-        img_bytes = base64.b64decode(base64_limpo)
-        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-        foto_capturada_cv2 = cv2.imdecode(img_array, -1)
+        with open(caminho_captura, "wb") as f:
+            f.write(base64.b64decode(base64_limpo))
         
-        # B. Descarregar a foto de referência (URL) para formato cv2
-        req = urllib.request.urlopen(funcionario["foto_referencia"])
-        arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
-        foto_matriz_cv2 = cv2.imdecode(arr, -1)
+        # Baixar foto de referência
+        urllib.request.urlretrieve(funcionario["foto_referencia"], caminho_referencia)
 
         # 3. Validação Biométrica com DeepFace
-        # ATENÇÃO: Descomente a linha abaixo e comente a simulação quando tiver a certeza de que a rota funciona
-        # resultado_ia = DeepFace.verify(img1_path=foto_capturada_cv2, img2_path=foto_matriz_cv2, enforce_detection=False)
+        resultado_ia = DeepFace.verify(
+            img1_path=caminho_captura, 
+            img2_path=caminho_referencia, 
+            enforce_detection=False
+        )
         
-        # Simulação para testar primeiro a gravação na base de dados:
-        resultado_ia = {"verified": True} 
-        
+        # 4. Limpar o disco
+        if os.path.exists(caminho_captura): os.remove(caminho_captura)
+        if os.path.exists(caminho_referencia): os.remove(caminho_referencia)
+
+        # 5. Avaliar o resultado
         if not resultado_ia["verified"]:
             return {"status": "erro", "mensagem": "Biometria não validada. Rosto não reconhecido."}
 
-        # 4. Guardar o registo de ponto
+        # 6. Guardar o registro
         novo_registo = {
-            "funcionario_id": funcionario["id"], # Liga o registo ao utilizador
+            "funcionario_id": funcionario["id"], 
             "tipo_batida": dados.tipo_batida,
             "latitude": dados.latitude,
             "longitude": dados.longitude
@@ -100,33 +108,29 @@ async def registrar_ponto(dados: PontoFuncionario):
         }
 
     except Exception as e:
+        if os.path.exists(caminho_captura): os.remove(caminho_captura)
+        if os.path.exists(caminho_referencia): os.remove(caminho_referencia)
         return {"status": "erro", "mensagem": str(e)}
     
 @app.post("/cadastrar")
 async def cadastrar_funcionario(dados: CadastroFuncionario):
     try:
-        # 1. Limpa o cabeçalho do base64 (se vier do frontend com 'data:image/jpeg;base64,')
         if "," in dados.foto_base64:
             base64_data = dados.foto_base64.split(",")[1]
         else:
             base64_data = dados.foto_base64
 
-        # 2. Converte o base64 para bytes de imagem
         image_bytes = base64.b64decode(base64_data)
         nome_arquivo = f"{dados.cpf}.jpg"
 
-        # 3. Faz o upload da foto para o Bucket 'fotos_referencia' no Supabase
-        # O content-type garante que o navegador a leia como imagem, e o upsert atualiza arquivos existentes
         upload_response = supabase.storage.from_("fotos_referencia").upload(
             path=nome_arquivo, 
             file=image_bytes, 
             file_options={"content-type": "image/jpeg", "upsert": "true"}
         )
 
-        # 4. Pega o Link Público da foto recém-salva
         url_foto = supabase.storage.from_("fotos_referencia").get_public_url(nome_arquivo)
 
-        # 5. Salva os dados do funcionário no banco de dados com a URL da foto
         novo_funcionario = {
             "nome": dados.nome,
             "cpf": dados.cpf,
