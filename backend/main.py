@@ -14,13 +14,13 @@ import tempfile # Biblioteca nativa adicionada para lidar com arquivos no Render
 # Carrega as senhas do arquivo .env (funciona no ambiente local)
 load_dotenv()
 
-# Puxa as credenciais
 url = os.getenv("SUPABASE_URL")
 key = os.getenv("SUPABASE_KEY")
 
-# Trava a aplicação com uma mensagem clara se as variáveis não existirem no Render
+# Trava a aplicação e imprime o que o Render está vendo
 if not url or not key:
-    raise ValueError("⚠️️ ERRO CRÍTICO: SUPABASE_URL ou SUPABASE_KEY não foram encontradas. Vá na aba 'Environment' do Render e configure as chaves.")
+    chaves_do_sistema = list(os.environ.keys())
+    raise ValueError(f"⚠ ERRO CRÍTICO: Chaves ausentes. O Render só conhece estas chaves: {chaves_do_sistema}")
 
 # Conecta ao banco de dados do Supabase
 supabase: Client = create_client(url, key)
