@@ -7,7 +7,7 @@ export default function Cadastro({ avancarTela }) {
   const [carregando, setCarregando] = useState(false);
   const videoRef = useRef(null);
 
-  // Liga a câmara ao abrir o ecrã
+  // Liga a câmara ao abrir 
   useEffect(() => {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
       .then((stream) => {
@@ -50,7 +50,7 @@ export default function Cadastro({ avancarTela }) {
 
     // 3. Envia para o FastAPI
     try {
-      const resposta = await fetch('http://localhost:8000/cadastrar', {
+      const resposta = await fetch('https://api-ponto-facial-7h06.onrender.com', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pacote)
