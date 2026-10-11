@@ -53,7 +53,7 @@ export default function Captura({ avancarTela, dadosPonto }) {
 
           try {
             // 4. Dispara o POST para o FastAPI
-            const resposta = await fetch('', {[https://api-ponto-facial-7h06.onrender.com/bater-ponto](https://api-ponto-facial-7h06.onrender.com/bater-ponto)
+            const resposta = await fetch('https://api-ponto-facial-7h06.onrender.com/bater-ponto', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(pacote)

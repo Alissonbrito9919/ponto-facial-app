@@ -50,7 +50,7 @@ export default function Cadastro({ avancarTela }) {
 
     // 3. Envia para o FastAPI
     try {
-      const resposta = await fetch('[https://api-ponto-facial-7h06.onrender.com/cadastrar](https://api-ponto-facial-7h06.onrender.com/cadastrar)', {
+      const resposta = await fetch('https://api-ponto-facial-7h06.onrender.com/cadastrar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pacote)
