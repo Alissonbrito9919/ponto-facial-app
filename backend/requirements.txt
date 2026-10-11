@@ -5,3 +5,4 @@ python-dotenv
 supabase
 pydantic
 tensorflow==2.15.0
+tf-keras
