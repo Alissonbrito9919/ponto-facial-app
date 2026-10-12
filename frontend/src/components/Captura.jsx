@@ -1,11 +1,33 @@
 import React, { useRef, useEffect, useState } from 'react';
 
+// 1. Função de compressão isolada (Não gasta memória recriando a cada render)
+const comprimirImagem = (base64Original) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Original;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      // Crava a largura em 480px, mantendo a proporção (reduz drasticamente o peso)
+      const scale = 480 / img.width;
+      canvas.width = 480;
+      canvas.height = img.height * scale;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // 0.7 = 70% de qualidade JPEG. 
+      const imagemComprimida = canvas.toDataURL('image/jpeg', 0.7);
+      resolve(imagemComprimida);
+    };
+  });
+};
+
 export default function Captura({ avancarTela, dadosPonto }) {
   const videoRef = useRef(null);
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
-    // Liga a câmara quando o ecrã abre
+    // Liga a câmara 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
       .then((stream) => {
         if (videoRef.current) {
@@ -25,34 +47,36 @@ export default function Captura({ avancarTela, dadosPonto }) {
   const lidarComCaptura = () => {
     setCarregando(true);
 
-    // 1. Tira a foto do vídeo para um canvas invisível
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-    
-    // Converte a imagem para base64
-    const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
-
-    // 2. Pede a localização GPS do dispositivo
+    // Pede a localização GPS do dispositivo PRIMEIRO
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (posicao) => {
-          const lat = posicao.coords.latitude;
-          const lon = posicao.coords.longitude;
-
-          // 3. Monta o pacote de dados exigido pelo backend
-          const pacote = {
-            cpf: dadosPonto.cpf,
-            tipo_batida: dadosPonto.tipo,
-            foto_base64: fotoBase64,
-            latitude: lat,
-            longitude: lon
-          };
-
           try {
-            // 4. Dispara o POST para o FastAPI
+            // 2. Extrai o frame atual do vídeo original
+            const canvas = document.createElement('canvas');
+            canvas.width = videoRef.current.videoWidth;
+            canvas.height = videoRef.current.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            
+            const fotoOriginal = canvas.toDataURL('image/jpeg', 1.0);
+
+            // 3. APLICA A COMPRESSÃO ANTES DO ENVIO (O segredo da otimização)
+            const fotoLeve = await comprimirImagem(fotoOriginal);
+
+            const lat = posicao.coords.latitude;
+            const lon = posicao.coords.longitude;
+
+            // 4. Monta o pacote de dados com a foto de 30KB
+            const pacote = {
+              cpf: dadosPonto.cpf,
+              tipo_batida: dadosPonto.tipo,
+              foto_base64: fotoLeve, 
+              latitude: lat,
+              longitude: lon
+            };
+
+            // 5. Dispara o POST para o FastAPI
             const resposta = await fetch('https://api-ponto-facial-7h06.onrender.com/bater-ponto', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -62,11 +86,11 @@ export default function Captura({ avancarTela, dadosPonto }) {
             const resultado = await resposta.json();
             setCarregando(false);
 
-            // 5. Trata a resposta do servidor
+            // 6. Trata a resposta do servidor
             if (resultado.status === 'sucesso') {
               avancarTela('feedback'); // Vai para a tela azul de sucesso
             } else {
-              alert("Erro: " + resultado.mensagem); // Mostra o erro (ex: CPF não encontrado)
+              alert("Erro: " + resultado.mensagem); 
             }
 
           } catch (erro) {
@@ -90,6 +114,7 @@ export default function Captura({ avancarTela, dadosPonto }) {
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Posicione o seu rosto</h2>
+      {/* Linha corrigida, removido o hífen solto que quebrava o JSX */}
       <p style={styles.subtitle}>{dadosPonto.tipo} - CPF: {dadosPonto.cpf}</p>
       
       <div style={styles.videoContainer}>

@@ -1,5 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// 1. Função de compressão isolada (idêntica à da Captura)
+const comprimirImagem = (base64Original) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Original;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      // Reduz a largura para 480px, mantendo a proporção
+      const scale = 480 / img.width;
+      canvas.width = 480;
+      canvas.height = img.height * scale;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // Converte para JPEG com 70% de qualidade
+      const imagemComprimida = canvas.toDataURL('image/jpeg', 0.7);
+      resolve(imagemComprimida);
+    };
+  });
+};
+
 export default function Cadastro({ avancarTela }) {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
@@ -32,24 +54,27 @@ export default function Cadastro({ avancarTela }) {
 
     setCarregando(true);
 
-    // 1. Tira a foto de base
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-    const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
-
-    // 2. Prepara o pacote de dados
-    const pacote = {
-      nome: nome,
-      cpf: cpf,
-      data_nascimento: dataNasc,
-      foto_base64: fotoBase64
-    };
-
-    // 3. Envia para o FastAPI
     try {
+      // 1. Tira a foto original em resolução nativa
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      const fotoOriginal = canvas.toDataURL('image/jpeg', 1.0);
+
+      // 2. APLICA A COMPRESSÃO ANTES DO ENVIO
+      const fotoLeve = await comprimirImagem(fotoOriginal);
+
+      // 3. Prepara o pacote de dados com a foto otimizada (leve)
+      const pacote = {
+        nome: nome,
+        cpf: cpf,
+        data_nascimento: dataNasc,
+        foto_base64: fotoLeve
+      };
+
+      // 4. Envia para o FastAPI
       const resposta = await fetch('https://api-ponto-facial-7h06.onrender.com/cadastrar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +92,8 @@ export default function Cadastro({ avancarTela }) {
       }
     } catch (erro) {
       setCarregando(false);
-      alert("Erro ao conectar com o servidor. A API está a correr?");
+      alert("Erro ao conectar com o servidor. A API está a rodar?");
+      console.error(erro);
     }
   };
 
